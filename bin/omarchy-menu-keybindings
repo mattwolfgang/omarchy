@@ -9,12 +9,45 @@ declare -A LUA_BIND_KEY_MAP
 declare -A LUA_BIND_DISPATCHER_MAP
 declare -A LUA_BIND_ARG_MAP
 
+# Media and hardware keys arrive as XKB keysym names. Name each after what is
+# printed on the key, so the menu reads "VOLUME UP", not "XF86AudioRaiseVolume".
+# A keysym missing here keeps its XKB name and still ranks with the media keys.
+media_key_labels() {
+  cat <<'LABELS'
+XF86AudioRaiseVolume=VOLUME UP
+XF86AudioLowerVolume=VOLUME DOWN
+XF86AudioMute=MUTE
+XF86AudioMicMute=MIC MUTE
+XF86AudioPlay=PLAY
+XF86AudioPause=PAUSE
+XF86AudioNext=NEXT TRACK
+XF86AudioPrev=PREVIOUS TRACK
+XF86MonBrightnessUp=BRIGHTNESS UP
+XF86MonBrightnessDown=BRIGHTNESS DOWN
+XF86KbdBrightnessUp=KEYBOARD LIGHT UP
+XF86KbdBrightnessDown=KEYBOARD LIGHT DOWN
+XF86KbdLightOnOff=KEYBOARD LIGHT
+XF86TouchpadToggle=TOUCHPAD TOGGLE
+XF86TouchpadOn=TOUCHPAD ON
+XF86TouchpadOff=TOUCHPAD OFF
+XF86Calculator=CALCULATOR
+XF86Eject=EJECT
+XF86PowerOff=POWER
+LABELS
+}
+
 # Hyprland reports XKB keycodes for code: bindings. Resolve them to symbols
 # via the compiled keymap, with a small fallback for common keys so the menu
 # remains readable if xkbcli cannot resolve a symbol.
 parse_keycodes() {
-  awk '
+  awk -v media_keys="$(media_key_labels)" '
     BEGIN {
+      split(media_keys, media_key_lines, "\n")
+      for (i in media_key_lines) {
+        separator = index(media_key_lines[i], "=")
+        if (separator) media_label[substr(media_key_lines[i], 1, separator - 1)] = substr(media_key_lines[i], separator + 1)
+      }
+
       split("10=1 11=2 12=3 13=4 14=5 15=6 16=7 17=8 18=9 19=0 20=MINUS 21=EQUAL 59=COMMA 60=PERIOD 61=SLASH", fallbacks, " ")
       for (i in fallbacks) {
         separator = index(fallbacks[i], "=")
@@ -59,6 +92,8 @@ parse_keycodes() {
         symbol = mouse_symbol[code]
         if (symbol == "") symbol = "mouse:" code
         sub("mouse:" code, symbol)
+      } else if (match($0, /^[^,]*,(XF86[A-Za-z0-9_]+),/, match_parts) && match_parts[1] in media_label) {
+        sub(match_parts[1], media_label[match_parts[1]])
       }
 
       print
@@ -435,7 +470,14 @@ END {
 }
 
 prioritize_entries() {
-  awk -F '\t' '
+  awk -F '\t' -v media_keys="$(media_key_labels)" '
+  BEGIN {
+    split(media_keys, media_key_lines, "\n")
+    for (i in media_key_lines) {
+      separator = index(media_key_lines[i], "=")
+      if (separator) is_media_key[substr(media_key_lines[i], separator + 1)] = 1
+    }
+  }
   {
     # Alternative chords are display only. Classifying on them would read
     # "SUPER SHIFT + RETURN / SUPER SHIFT + B" as the alternate browser chord
@@ -494,7 +536,11 @@ prioritize_entries() {
     if (match(line, /Cycle to/))  prio = 96
     if (match(line, /Reveal active/))  prio = 97
     if (match(line, /Apple Display/))  prio = 98
-    if (match(line, /XF86/))  prio = 99
+    # Media keys rank by the key alone, renamed or not, and stay in the tail
+    key = line
+    sub(/[[:space:]]*→.*/, "", key)
+    sub(/.*\+[[:space:]]*/, "", key)
+    if (match(line, /XF86/) || key in is_media_key)  prio = 99
     if (match(line, /Tmux keybindings/)) prio = 100
     if (match(line, /Herdr keybindings/)) prio = 101
 
@@ -533,7 +579,7 @@ output_binding_records_uncached() {
 
 keybindings_cache_key() {
   {
-    printf 'v14\n'
+    printf 'v15\n'
     hyprctl devices 2>/dev/null | grep -F 'active keymap:'
     hyprctl binds 2>/dev/null
   } | sha256sum | awk '{ print $1 }'
