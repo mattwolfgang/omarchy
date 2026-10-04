@@ -26,7 +26,7 @@ case $1 in
 esac
 
 # Saved even for dwindle, so the choice also wins over a layout set in the
-# user's own looknfeel. Workspaces given a layout with Super + L keep theirs.
+# user's own looknfeel. Workspaces given a layout with Super + Ctrl + L keep theirs.
 mkdir -p "$MODES_DIR"
 printf 'o.workspace_mode({ default = "%s" })\n' "$1" >"$DEFAULT_FILE"
 

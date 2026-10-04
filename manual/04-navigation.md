@@ -32,9 +32,9 @@ Omarchy's default layout is called dwindle. It keeps all the windows you open on
 
  ![navigation-dwindle-layout](images/navigation-dwindle-layout.webp)
 
-But you can also choose to turn a workspace into the scrolling layout where windows are lined up side-by-side, beyond the visible edge of the display. You turn a single workspace into this layout via `Super + L`.
+But you can also choose to turn a workspace into the scrolling layout where windows are lined up side-by-side, beyond the visible edge of the display. You turn a single workspace into this layout via `Super + Ctrl + L`.
 
-Pressing `Super + L` again turns the workspace floating, where windows overlap freely and you place them yourself, and a third press returns it to dwindle. `Super + Alt + L` goes through them the other way. A window that floats anyway — one you popped out with `Super + T`, or an app that always opens floating — keeps floating when the workspace goes back to tiling. The top bar marks the workspace you're on with its layout: a square for dwindle, a circle for scrolling, and a triangle for floating. Clicking that mark cycles the layout too.
+Pressing `Super + Ctrl + L` again turns the workspace floating, where windows overlap freely and you place them yourself, and a third press returns it to dwindle. `Super + Ctrl + Alt + L` goes through them the other way. A window that floats anyway — one you popped out with `Super + T`, or an app that always opens floating — keeps floating when the workspace goes back to tiling. The top bar marks the workspace you're on with its layout: a square for dwindle, a circle for scrolling, and a triangle for floating. Clicking that mark cycles the layout too.
 
  ![navigation-scrolling-layout](images/navigation-scrolling-layout.webp)
 
@@ -54,7 +54,7 @@ hl.config({
 
 A floating workspace works like a traditional desktop: windows overlap, and you move and size them yourself. Each window gets a titlebar in your theme's colors, with buttons to maximize and close. Click a window to bring it forward. Resize it from any edge or corner. Double-click a titlebar to maximize the window while keeping the top bar in view, and again to get its old size back.
 
-New workspaces, and any you haven't given a layout of their own with `Super + L`, use the default layout. Pick it under _Trigger > Appearance > Workspace Layout_: Tiling, Scrolling, or Floating. `omarchy-hyprland-workspace-layout-default scrolling` sets it from a terminal.
+New workspaces, and any you haven't given a layout of their own with `Super + Ctrl + L`, use the default layout. Pick it under _Trigger > Appearance > Workspace Layout_: Tiling, Scrolling, or Floating. `omarchy-hyprland-workspace-layout-default scrolling` sets it from a terminal.
 
 ### Grouping windows
 

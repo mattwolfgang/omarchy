@@ -102,7 +102,7 @@ toggle
 applied dwindle || fail "dwindle is applied immediately" "$(cat "$log_file")"
 pass "floating cycles back to dwindle"
 
-# Super + Alt + L walks the same cycle the other way.
+# Super + Ctrl + Alt + L walks the same cycle the other way.
 toggle_back back
 [[ $(saved_mode) == "floating" ]] || fail "back from dwindle is floating" "saved: $(cat "$layout_file")"
 toggle_back back

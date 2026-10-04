@@ -38,7 +38,7 @@ BarWidget {
   }
 
   // The focused workspace shows its layout: a square tiles, a circle scrolls,
-  // and a triangle floats. Clicking it cycles to the next one, as Super + L does.
+  // and a triangle floats. Clicking it cycles to the next one, as Super + Ctrl + L does.
   property string focusedMode: "dwindle"
   property bool modeStale: false
 
@@ -118,7 +118,7 @@ BarWidget {
     }
   }
 
-  // Super + L and the default layout change the mode without a focus change,
+  // Super + Ctrl + L and the default layout change the mode without a focus change,
   // so they ask every bar to read it again.
   ShellIpc {
     target: "omarchy.workspaces"
