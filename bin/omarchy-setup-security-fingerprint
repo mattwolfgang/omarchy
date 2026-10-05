@@ -101,7 +101,7 @@ if sudo fprintd-enroll "$USER"; then
     setup_pam_config
     setup_lock_fingerprint_pam
     echo -e "\e[32m\nPerfect! Fingerprint authentication is now configured.\e[0m"
-    echo "You can use your fingerprint for sudo, polkit, and lock screen (Super + Ctrl + L)."
+    echo "You can use your fingerprint for sudo, polkit, and lock screen (Super + L)."
   else
     echo -e "\e[31m\nVerification failed. You may want to try enrolling again.\e[0m"
   fi
