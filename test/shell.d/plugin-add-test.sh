@@ -175,3 +175,68 @@ for good in \
     fail "plugin add did not reach git clone for a legitimate URL: $good" "$output"
 done
 pass "plugin add lets legitimate git URLs reach git clone"
+
+# --- plugin-pre-install / plugin-pre-update gates ---------------------------
+#
+# A gate hook that exits non-zero refuses the install or update; one that
+# exits 0 lets it through. The hook is a real file in the hooks directory and
+# the add and update run end to end on local repositories.
+
+gate_home="$TMPDIR/gate-home"
+mkdir -p "$gate_home/.config/omarchy/plugins"
+gated="$TMPDIR/gated"
+write_plugin "$gated" "acme.gated" "Gated"
+git -C "$gated" init -q
+git -C "$gated" add .
+git -C "$gated" -c user.name=Test -c user.email=test@example.com commit -qm "Initial"
+
+gate_run() {
+  HOME="$gate_home" OMARCHY_PATH="$ROOT" PATH="$stub_dir:$ROOT/bin:$PATH" "$@" 2>&1
+}
+
+write_gate() {
+  local event="$1"
+  local status="$2"
+  mkdir -p "$gate_home/.config/omarchy/hooks/$event.d"
+  printf '#!/bin/bash\nprintf "%%s\\n" "$@" >"%s"\nexit %s\n' "$TMPDIR/$event.args" "$status" \
+    >"$gate_home/.config/omarchy/hooks/$event.d/scanner"
+}
+
+write_gate plugin-pre-install 1
+output=$(gate_run omarchy-plugin-add "$gated" --yes) &&
+  fail "plugin add installs a plugin its pre-install hook refused" "$output"
+[[ ! -e $gate_home/.config/omarchy/plugins/acme.gated ]] ||
+  fail "plugin add leaves the refused plugin installed"
+[[ -z $(find "$gate_home/.config/omarchy/plugins" -maxdepth 1 -name '.add.tmp.*') ]] ||
+  fail "plugin add leaves the refused checkout staged"
+[[ $(sed -n 3p "$TMPDIR/plugin-pre-install.args") == "acme.gated" ]] ||
+  fail "plugin-pre-install hook gets the plugin id" "$(cat "$TMPDIR/plugin-pre-install.args")"
+pass "plugin add honors a refusing plugin-pre-install hook"
+
+# A hook that rewrites the staged checkout and then allows it must not get its
+# version installed in place of the one that was cloned.
+printf '#!/bin/bash\necho "// injected" >>"$1/Widget.qml"\nexit 0\n' \
+  >"$gate_home/.config/omarchy/hooks/plugin-pre-install.d/scanner"
+output=$(gate_run omarchy-plugin-add "$gated" --yes) &&
+  fail "plugin add installs a checkout its pre-install hook changed" "$output"
+[[ ! -e $gate_home/.config/omarchy/plugins/acme.gated ]] ||
+  fail "plugin add leaves a hook-changed plugin installed"
+pass "plugin add refuses a checkout its plugin-pre-install hook changed"
+
+write_gate plugin-pre-install 0
+gate_run omarchy-plugin-add "$gated" --yes >/dev/null ||
+  fail "plugin add refuses a plugin its pre-install hook allowed"
+pass "plugin add installs what a plugin-pre-install hook allows"
+
+installed="$gate_home/.config/omarchy/plugins/acme.gated"
+before=$(git -C "$installed" rev-parse HEAD)
+printf 'import QtQuick\nItem { visible: false }\n' >"$gated/Widget.qml"
+git -C "$gated" -c user.name=Test -c user.email=test@example.com commit -qam "Update"
+write_gate plugin-pre-update 1
+output=$(gate_run omarchy-plugin-update acme.gated --yes) &&
+  fail "plugin update applies an update its pre-update hook refused" "$output"
+[[ $(git -C "$installed" rev-parse HEAD) == "$before" ]] ||
+  fail "plugin update moves the plugin past a refused update"
+[[ $(sed -n 4p "$TMPDIR/plugin-pre-update.args") == $(git -C "$gated" rev-parse HEAD) ]] ||
+  fail "plugin-pre-update hook gets the incoming commit" "$(cat "$TMPDIR/plugin-pre-update.args")"
+pass "plugin update honors a refusing plugin-pre-update hook"

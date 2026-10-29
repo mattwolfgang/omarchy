@@ -64,7 +64,29 @@ update_one() {
     }
   fi
 
-  if ! git -C "$dir" merge --ff-only FETCH_HEAD >/dev/null 2>&1; then
+  # A plugin-pre-update hook sees the incoming commit, already fetched into
+  # the plugin's repository, before it is checked out, and refuses it by
+  # exiting non-zero. The plugin stays on its current commit. The commits are
+  # pinned first and the plugin is checked afterwards, so a hook cannot swap
+  # in other code: the update applies exactly the commit that was fetched.
+  # A plugin may keep untracked files of its own (saved settings), so the
+  # check compares the plugin before and after the hook rather than
+  # requiring a clean tree.
+  local current incoming before
+  current=$(git -C "$dir" rev-parse HEAD)
+  incoming=$(git -C "$dir" rev-parse FETCH_HEAD)
+  before=$(git -C "$dir" status --porcelain --untracked-files=all)
+  if ! OMARCHY_ASSUME_YES=$ASSUME_YES omarchy-hook-gate plugin-pre-update "$dir" "$id" "$current" "$incoming"; then
+    echo "omarchy-plugin-update: a plugin-pre-update hook refused the update of '$id'" >&2
+    return 1
+  fi
+  if [[ $(git -C "$dir" rev-parse HEAD) != "$current" ]] ||
+    [[ $(git -C "$dir" status --porcelain --untracked-files=all) != "$before" ]]; then
+    echo "omarchy-plugin-update: a plugin-pre-update hook changed '$id'; not updating" >&2
+    return 1
+  fi
+
+  if ! git -C "$dir" merge --ff-only "$incoming" >/dev/null 2>&1; then
     echo "omarchy-plugin-update: cannot fast-forward '$id'; you have local changes in $dir" >&2
     return 1
   fi

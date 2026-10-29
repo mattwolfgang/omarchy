@@ -42,6 +42,10 @@ Omarchy fires hooks at a handful of moments, and you can hang your own scripts o
 | `theme-set` | After a theme change (theme name in `$1`) |
 | `font-set` | After a font change (font name in `$1`) |
 | `battery-low` | When the battery gets low (percentage in `$1`) |
+| `plugin-pre-install` | Before `omarchy plugin add` installs a plugin (staged checkout in `$1`, git URL in `$2`, plugin id in `$3`); exiting non-zero refuses the install |
+| `plugin-pre-update` | Before `omarchy plugin update` applies an update (plugin folder in `$1`, id in `$2`, current commit in `$3`, incoming commit in `$4`); exiting non-zero refuses the update |
+
+The two plugin hooks are where a plugin security scanner belongs: they run for every install and update, including those other tools make on your behalf, and see the code before it reaches your plugins folder. `OMARCHY_ASSUME_YES=1` tells a hook nobody is at a terminal to answer a question. A plugin hook can only allow or refuse: if it changes the code it was handed, Omarchy refuses the install or update rather than install the changed version. When a hook refuses, Omarchy names it, so a hook you didn't put there can't quietly block your plugins. Like every hook, these run as you, so only install ones you trust.
 
 The `pre-refresh-pacman` hook is where custom repositories or `IgnorePkg` lines belong, since it runs before the package transaction. Both update-related hooks run as your user after Omarchy clears its cached sudo authorization, so a hook that uses `sudo` needs its own authorization and may ask for your password.
 

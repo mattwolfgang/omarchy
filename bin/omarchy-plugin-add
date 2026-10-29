@@ -144,6 +144,21 @@ if [[ -e $target || -L $target ]]; then
   fail "plugin '$id' is already installed; update it with: omarchy plugin update $id"
 fi
 
+# A plugin-pre-install hook (a security scanner, say) sees the validated
+# checkout before it is installed, and refuses it by exiting non-zero. A hook
+# could also change the checkout it was handed; whatever it does, what gets
+# installed must be exactly the commit that was cloned and validated.
+cloned=$(git -C "$stage" rev-parse HEAD)
+if ! OMARCHY_ASSUME_YES=$ASSUME_YES omarchy-hook-gate plugin-pre-install "$stage" "$url" "$id"; then
+  rm -rf "$stage"
+  fail "refusing to add: a plugin-pre-install hook refused '$id'"
+fi
+if [[ $(git -C "$stage" rev-parse HEAD) != "$cloned" ]] ||
+  [[ -n $(git -C "$stage" status --porcelain --untracked-files=all --ignored) ]]; then
+  rm -rf "$stage"
+  fail "refusing to add: a plugin-pre-install hook changed the checkout of '$id'"
+fi
+
 mv "$stage" "$target"
 echo "Added $id into $target"
 

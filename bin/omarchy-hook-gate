@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# omarchy:summary=Run a named gate hook; any hook that exits non-zero refuses the operation.
+# omarchy:args=[name] [args...]
+# omarchy:hidden=true
+
+set -euo pipefail
+
+# Like omarchy-hook, but for hooks that may veto what is about to happen,
+# such as installing a plugin. Runs ~/.config/omarchy/hooks/<name> and every
+# file in ~/.config/omarchy/hooks/<name>.d/, in order, and stops at the first
+# one that exits non-zero, returning that status. With no hooks installed it
+# allows the operation. Hooks inherit stdin, so one run from a terminal can
+# ask the user before deciding; OMARCHY_ASSUME_YES=1 tells them nobody is
+# there to ask.
+
+if (( $# < 1 )); then
+  echo "Usage: omarchy-hook-gate [name] [args...]"
+  exit 1
+fi
+
+HOOK=$1
+
+# Same name rules as omarchy-hook: a fixed label, never a path.
+if [[ -z $HOOK || $HOOK == */* || $HOOK == "." || $HOOK == ".." ]]; then
+  echo "Invalid hook name: $HOOK" >&2
+  exit 2
+fi
+
+HOOK_PATH="$HOME/.config/omarchy/hooks/$1"
+HOOK_DIR="$HOOK_PATH.d"
+shift
+
+hooks=()
+[[ -f $HOOK_PATH ]] && hooks+=("$HOOK_PATH")
+if [[ -d $HOOK_DIR ]]; then
+  for hook in "$HOOK_DIR"/*; do
+    [[ -f $hook ]] || continue
+    [[ $hook == *.sample ]] && continue
+    hooks+=("$hook")
+  done
+fi
+
+for hook in "${hooks[@]}"; do
+  status=0
+  bash "$hook" "$@" || status=$?
+  if (( status != 0 )); then
+    echo "Refused by hook: $hook" >&2
+    exit "$status"
+  fi
+done
